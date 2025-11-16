@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>ESP32 LED Kontrol</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+	body { font-family: Arial; text-align: center; }
+	input[type=range] { width: 80%%; }
+</style>
+</head>
+<body>
+  <h2>ESP32 LED Parlaklik Kontrolu</h2>
+  <p>Parlaklik: <span id="val">%BRIGHT%</span></p>
+  <input type="range" min="0" max="255" value="%BRIGHT%" id="slider" oninput="update(this.value)">
+  <script>
+    function update(val){
+      document.getElementById('val').innerText = val;
+      fetch('/set?value=' + val);
+    }
+  </script>
+</body>
+</html>
