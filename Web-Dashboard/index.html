@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>ESP32 Dashboard</title>
+  <style>
+    body { font-family: Arial; background: #111; color: white; text-align: center; }
+    .card {
+      background: #222; padding: 20px; margin: 20px auto; width: 300px;
+      border-radius: 12px; box-shadow: 0px 0px 10px #000;
+    }
+    button {
+      background: #0d6efd; color: white; padding: 10px 20px;
+      border: none; border-radius: 8px; cursor: pointer; font-size: 18px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    let ws = new WebSocket("ws://" + location.host + ":81");
+
+    let tempData = [];
+    let rssiData = [];
+    let labels = [];
+
+    let ctx = null;
+    let chart = null;
+
+    function createChart(){
+      ctx = document.getElementById("chart").getContext("2d");
+      chart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {label : "RSSI (dBm)", data: rssiData, borderWidth: 2}
+          ]
+        }
+      });
+    }
+
+    ws.onmessage = (event) => {
+      let data = JSON.parse(event.data);
+      document.getElementById("led").innerText = data.led;
+      document.getElementById("uptime").innerText = data.uptime + "sec";
+      document.getElementById("ip").innerText = data.ip;
+      document.getElementById("rssi").innerText = data.rssi + "dBm";
+      document.getElementById("temp").innerText = data.temp + "C";
+
+      labels.push(new Date().toLocaleTimeString());
+      // tempData.push(data.temp);
+      rssiData.push(data.rssi);
+
+      if(labels.length > 30){
+        labels.shift();
+        // tempData.shift();
+        rssiData.shift();
+      }
+
+      chart.update();
+    };
+
+    function scanWifi(){
+      let listDiv = document.getElementById("wifi-list");
+      listDiv.innerHTML = "Taraniyor...";
+
+      fetch("/scan")
+        .then(response => response.json())
+        .then(data => {
+          listDiv.innerHTML = "";
+          if(data.length === 0){
+            listDiv.innerHTML = "Ag Bulunamadi.";
+            return
+          }
+
+          let html = "<ul>";
+          data.forEach(net => {
+            html += `<li>${net.ssid}(${net.rssi} dBm) - ${net.enc}</li>`;
+          });
+          html += "</ul>";
+          listDiv.innerHTML = html;
+        })
+        .catch(err => {
+          listDiv.innerHTML = "Tarama hatasi: " + err;
+        });
+    }
+  </script>
+</head>
+<body>
+  <h1>ESP32 Dashboard</h1>
+
+  <div class="card">
+    <h2>LED Durumu: <span id="led">-</span></h2>
+    <button onclick="fetch('/toggle')">LED Aç/Kapat</button>
+  </div>
+
+  <div class="card">
+    <h2>Wi-Fi Taramasi</h2>
+    <button onclick="scanWifi()">Ag Tara</button>
+    <div id="wifi-list"></div>
+  </div>
+
+  <div class="card">
+    <h3>IP Adresi:</h3>
+    <p id="ip">-</p>
+
+    <h3>Uptime:</h3>
+    <p id="uptime">-</p>
+
+    <h3>Wi-Fi Sinyal Gücü:</h3>
+    <p id="rssi">-</p>
+
+    <h3> Sıcaklık</h3>
+    <p id="temp">-</p>
+  </div>
+  <canvas id="chart" width="300" height="200"></canvas>
+  <script>createChart();</script>
+
+</body>
+</html>
